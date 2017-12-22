@@ -2,26 +2,17 @@
 
 require_once __DIR__.'/../vendor/autoload.php';
 
-use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\HttpFoundation;
-use Symfony\Component\Routing;
-use Symfony\Component\HttpKernel;
+use Symfony\Component\HttpFoundation\Request;
 
-$request = HttpFoundation\Request::createFromGlobals();
-$requestStack = new HttpFoundation\RequestStack;
 $routes = include __DIR__.'/../src/routes.php';
+$app = include __DIR__.'/../src/container.php';
 
-$context = new Routing\RequestContext();
-$matcher = new Routing\Matcher\UrlMatcher($routes, $context);
+$app['listener.string_response'] = function($c) {
+    return new Simplex\StringResponseListener;
+};
+$app['dispatcher']->addSubscriber($app['listener.string_response']);
 
-$controllerResolver = new HttpKernel\Controller\ControllerResolver();
-$argumentResolver = new HttpKernel\Controller\ArgumentResolver();
-
-$dispatcher = new EventDispatcher();
-$dispatcher->addSubscriber(new HttpKernel\EventListener\RouterListener($matcher, $requestStack));
-$dispatcher->addSubscriber(new Simplex\StringResponseListener());
-
-$framework = new Simplex\Framework($dispatcher, $controllerResolver, $requestStack, $argumentResolver);
-$response = $framework->handle($request);
+$request = Request::createFromGlobals();
+$response = $app['framework']->handle($request);
 
 $response->send();
